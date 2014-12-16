@@ -1,0 +1,186 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%inherit file="../main.html" />
+
+<%namespace name='static' file='../static_content.html'/>
+<%!
+from django.utils.translation import ugettext as _
+from django.core.urlresolvers import reverse
+from courseware.courses import course_image_url, get_course_about_section
+%>
+<%block name="pagetitle">${_("Courses")}</%block>
+<%! from microsite_configuration import microsite %>
+
+<section class="find-courses">
+
+<%
+  course_index_overlay_text = microsite.get_value('course_index_overlay_text', _("Explore free courses from leading universities."))
+
+  # not sure why this is, but if I use static.url('images/edx_bw.png') then the HTML rendering
+  # of this template goes wonky
+
+  logo_file = microsite.get_value(
+    'course_index_overlay_logo_file', settings.STATIC_URL + 'images/edx_bw.png')
+%>
+
+
+
+<div class="course-search">
+	<div class="course-search-group">
+		<form class="course-search-form">
+			<div class="course-search-container">
+				<div id="course-search-first" style="display: block;">
+					<input  id="course-search-input" type="s_text"  placeholder="select lessons..." name="s_text" autocomplete="off" >
+					<button type="submit" class="icon-search course-search-button">	</button>
+				</div>
+				<div id="course-search-re" style="display: none;">
+					<div class="class-div">
+						<a class="show-a" ></a>
+						<a class="show-a-x" onclick="onclick_a()">X</a>
+					</div>		
+				</div>
+			</div>
+		</form>
+	</div>
+	<div class="course-class">	
+		<h2 id="course-class-h2">${_(u"学科分类")}</h2>
+		<div class="class-1">
+			<a name="" class="class-a">${_(u"全部学科({0})".format(all_c_num))}</a>
+			%for i in range(0,none_zero):
+			<a name=${name_list[i]} class="class-a">${_(u"{0}({1})".format(category_list[i],category_num[i]))}</a>
+			%endfor
+		</div>
+	</div>
+</div>
+	
+
+  <section class="container">
+    <section class="courses">
+      <ul class="courses-listing">
+        %for course in courses:
+        <li class="courses-listing-item">
+          <%include file="../course.html" args="course=course" />
+        </li>
+        %endfor
+      </ul>
+    </section>
+  </section>
+</section>
+<%block name="js_extra">
+  <script type="text/javascript">
+	$("#course-search-input").focus(function(){
+		
+		$(".course-class").fadeIn("slow");
+	 });
+	 $("input").blur(function(){
+		$(".course-class").fadeOut("slow");
+	 });	 
+	 $(".course-search-button").click(function(){
+		event.preventDefault();
+	  });
+	 function ShowCourses(response,courses_num){
+		shtml='';
+		for(i=0;i<courses_num;i++)
+			{
+				shtml+='<li class="courses-listing-item"> ';
+				shtml+='<article id="';
+				shtml+=response[i].id;
+				shtml+='" class="course">';
+				if(response[i].is_new)
+				{
+					shtml+='<span class="status">${_("New")}</span>';
+				}
+				shtml+='<a href="';
+				shtml+=response[i].about_url;
+				shtml+=' "><div class="inner-wrapper">   <header class="course-preview"><hgroup> <h2><span class="course-number">';
+				shtml+=response[i].number;
+				shtml+='</span>&nbsp;';
+				shtml+=response[i].name;
+				shtml+='</h2> </hgroup><div class="info-link">&#x2794;</div> </header> <section class="info"> <div class="cover-image"> <img src="';
+				shtml+=response[i].img_url;
+				shtml+='" alt="'; 
+				shtml+=response[i].number;
+				shtml+=' ';
+				shtml+=response[i].name;
+				shtml+='Cover Image" /> </div> <div class="desc"> <p>';
+				shtml+=response[i].short_disc;
+				shtml+='</p> </div> <div class="bottom"> <span class="university">';
+				shtml+=response[i].org;
+				shtml+='</span> ';
+				if(!response[i].start_date_is_still)
+				{
+					shtml+='<span class="start-date">';
+					shtml+=response[i].start_date_text;
+					shtml+='</span> ';
+				}
+				shtml+='</div> </section>  </div><div class="meta-info">  <p class="university">';
+				shtml+=response[i].org;
+				shtml+='</p> </div> </a> </article>';
+				shtml+='</li>';
+			}
+			$(".courses-listing").html(shtml);
+	 }
+	 $(".class-a").click(function(){
+		a_name=event.target.name;
+		showText=event.target.innerText;
+		 $.ajax({  
+			type: "get",  
+			dataType: "json",    
+			url:"/get_category/",
+			data:{name:a_name},
+			success:function (response){
+				if(response.length<=4)
+				{
+					$(".courses-listing").html('');
+				}else{
+				courses_num=response[0].lenth;
+				ShowCourses(response,courses_num);
+				}				
+			}
+		});
+		$(".show-a")[0].innerText=showText;
+		document.getElementById("course-search-re").style.display = "block";
+		document.getElementById("course-search-first").style.display = "none";
+	});
+	function onclick_a(){
+		document.getElementById("course-search-first").style.display = "block";
+		document.getElementById("course-search-re").style.display = "none";
+		a_name="";
+		$.ajax({  
+			type: "get",  
+			dataType: "json",    
+			url:"/get_category/",
+			data:{name:a_name},
+			success:function (response){
+				if(response.length<=4)
+				{
+					$(".courses-listing").html('');
+				}else{
+				courses_num=response[0].lenth;
+				ShowCourses(response,courses_num);
+				}				
+			}
+		});
+	}
+	 $("#course-search-input").keyup(function(){
+		 
+		 c_name=$("#course-search-input")[0].value;
+		 c_name=c_name.toLowerCase();
+		 $.ajax({  
+			type: "get",  
+			dataType: "json",    
+			url:"/getcourses/",
+			data:{s_text:c_name},
+			success:function (response) {   
+				if(response.length==0)
+				{					
+				$(".courses-listing").html('');
+				
+				}else{
+				ShowCourses(response,response[0].lenth);
+				}
+			}  
+		});  
+	 });
+
+  </script>
+</%block>
